@@ -2,297 +2,249 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robo Run: Protocolo de Elite</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ROBO EVOLUTION: MULTIVERSE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
-            --neon-blue: #00f3ff;
-            --neon-pink: #ff00ff;
-            --bg-dark: #0a0a12;
-            --panel-bg: rgba(20, 20, 35, 0.8);
-            --glass: rgba(255, 255, 255, 0.05);
+            --cyan: #00f3ff; --mag: #ff00ff; --green: #39ff14; --gold: #ffcc00;
         }
-
-        * { box-sizing: border-box; font-family: 'Orbitron', 'Segoe UI', sans-serif; }
-
+        * { box-sizing: border-box; font-family: 'Share Tech Mono', monospace; -webkit-tap-highlight-color: transparent; }
+        
         body { 
-            margin: 0; background: var(--bg-dark); color: white; 
-            height: 100vh; display: flex; flex-direction: column;
-            overflow: hidden;
+            margin: 0; background: #000; color: #fff; height: 100dvh; 
+            display: flex; flex-direction: column; overflow: hidden; touch-action: none; 
         }
 
-        /* TELA DO JOGO (VIEWPORT) */
-        #viewport {
-            flex: 1; position: relative;
-            background: linear-gradient(180deg, #000 0%, #0a0a1a 100%);
-            border-bottom: 2px solid var(--neon-blue);
-            overflow: hidden;
+        /* TRAVA DESKTOP */
+        #desktop-blocker {
+            display: none; position: fixed; inset: 0; background: #050510; 
+            z-index: 10000; flex-direction: column; align-items: center; 
+            justify-content: center; text-align: center; color: var(--mag);
+        }
+        @media (min-width: 1025px) { #desktop-blocker { display: flex; } }
+
+        /* CENÁRIO COM TRANSIÇÃO SUAVE */
+        #game-screen {
+            flex: 1; position: relative; overflow: hidden;
+            border-bottom: 5px solid rgba(255,255,255,0.2);
+            transition: all 1s ease-in-out;
         }
 
-        /* Grade de perspectiva no chão */
-        .grid-floor {
-            position: absolute; bottom: 0; width: 200%; height: 100px;
-            background-image: 
-                linear-gradient(var(--neon-blue) 1px, transparent 1px),
-                linear-gradient(90deg, var(--neon-blue) 1px, transparent 1px);
-            background-size: 50px 50px;
-            transform: perspective(100px) rotateX(45deg);
-            opacity: 0.2;
-            left: -50%;
-        }
+        /* Temas de Fundo */
+        .theme-1 { background: linear-gradient(180deg, #001220 0%, #004e92 100%); }
+        .theme-2 { background: linear-gradient(180deg, #2d0b36 0%, #c31432 100%); }
+        .theme-3 { background: linear-gradient(180deg, #000000 0%, #0f9b0f 100%); }
 
         #robot {
-            position: absolute; bottom: 40px; left: 80px;
-            font-size: 60px; z-index: 10;
-            filter: drop-shadow(0 0 10px var(--neon-blue));
-            transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute; bottom: 20px; left: 10%; font-size: 60px; z-index: 100;
+            filter: drop-shadow(0 0 15px rgba(255,255,255,0.8));
+            transition: bottom 0.25s cubic-bezier(0.15, 0.85, 0.35, 1), transform 0.2s;
         }
 
-        .entity {
-            position: absolute; bottom: 50px; font-size: 45px;
-            text-shadow: 0 0 15px currentColor;
+        .entity { 
+            position: absolute; font-size: 42px; z-index: 50; 
+            filter: drop-shadow(0 0 8px rgba(0,0,0,0.5));
+            transition: transform 0.1s;
         }
 
-        /* HUD MODERNO */
-        .hud {
-            position: absolute; top: 20px; left: 20px; right: 20px;
-            display: flex; justify-content: space-between; z-index: 100;
+        /* HUD */
+        .hud { position: absolute; top: 15px; width: 100%; display: flex; justify-content: space-around; z-index: 200; pointer-events: none; }
+        .stat { background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(5px); }
+
+        /* CONTROLES */
+        #controls { 
+            height: 22vh; min-height: 180px; display: flex; 
+            justify-content: space-between; align-items: center; 
+            padding: 0 30px; background: rgba(0,0,0,0.9);
         }
 
-        .stat-box {
-            background: var(--panel-bg); padding: 10px 20px;
-            border: 1px solid var(--neon-blue); border-radius: 4px;
-            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+        .joy-btn {
+            width: 120px; height: 120px; border-radius: 50%; border: 4px solid #fff;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-weight: 900; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
         }
+        #btn-run { border-color: var(--cyan); color: var(--cyan); }
+        #btn-run.active { background: var(--cyan); color: #000; transform: scale(0.9); }
+        #btn-jump { border-color: var(--mag); color: var(--mag); }
+        #btn-jump.active { background: var(--mag); color: #000; transform: scale(0.9); }
 
-        .life-bar { color: #ff4d4d; font-size: 1.2rem; }
-
-        /* PAINEL DE COMANDOS */
-        #console {
-            flex: 1.3; background: #0f0f1a; padding: 20px;
-            display: flex; flex-direction: column;
-            border-top: 1px solid rgba(255,255,255,0.1);
+        /* MODAIS */
+        .modal { 
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); 
+            z-index: 3000; flex-direction: column; align-items: center; 
+            justify-content: center; text-align: center;
         }
-
-        .command-list {
-            flex: 1; overflow-y: auto; padding-right: 10px;
-            margin-bottom: 15px;
-        }
-
-        .cmd-card {
-            background: var(--glass); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px; padding: 15px; margin-bottom: 12px;
-            display: flex; align-items: center; gap: 15px;
-            backdrop-filter: blur(5px);
-            animation: fadeIn 0.4s ease;
-        }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } }
-
-        select, input {
-            background: #1a1a2e; color: var(--neon-blue);
-            border: 1px solid var(--neon-blue); padding: 8px;
-            border-radius: 6px; font-weight: bold;
-        }
-
-        .controls-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-        }
-
-        button {
-            padding: 18px; border: none; border-radius: 8px;
-            font-size: 0.9rem; font-weight: 800; cursor: pointer;
-            text-transform: uppercase; letter-spacing: 2px;
-            transition: 0.3s;
-        }
-
-        .btn-add { background: var(--glass); color: white; grid-column: span 2; border: 1px dashed white; }
-        .btn-add:hover { background: rgba(255,255,255,0.1); }
-        .btn-run { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
-        .btn-reset { background: #333; color: white; }
-
-        /* TELA DE GAME OVER */
-        #modal {
-            display: none; position: fixed; inset: 0;
-            background: rgba(0,0,0,0.9); z-index: 1000;
-            flex-direction: column; justify-content: center; align-items: center;
-            text-align: center;
+        .btn-restart {
+            margin-top: 20px; padding: 20px 50px; background: var(--green); 
+            border: none; font-weight: bold; border-radius: 50px; font-size: 1.2rem;
         }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="theme-1">
 
-    <div id="modal">
-        <h1 id="modal-title" style="font-size: 3rem; color: var(--neon-pink);">SISTEMA CRÍTICO</h1>
-        <p id="modal-desc" style="font-size: 1.2rem; margin: 20px;">O robô sofreu danos irreparáveis.</p>
-        <button class="btn-run" onclick="location.reload()">REINICIAR NÚCLEO</button>
+    <div id="desktop-blocker">
+        <h1>SISTEMA RESTRITO</h1>
+        <p>Acesse pelo celular ou tablet.</p>
     </div>
 
-    <div id="viewport">
+    <div id="modal-start" class="modal" style="display: flex;">
+        <h1 style="color: var(--cyan);">ROBO EVOLUTION</h1>
+        <p>O MUNDO MUDA CONFORME VOCÊ AVANÇA</p>
+        <button class="btn-restart" onclick="startGame()">CONECTAR</button>
+    </div>
+
+    <div id="modal-over" class="modal">
+        <h1 style="color: var(--mag);">CONEXÃO PERDIDA</h1>
+        <p id="final-score" style="font-size: 1.5rem;"></p>
+        <button class="btn-restart" onclick="location.reload()">REBOOT</button>
+    </div>
+
+    <div id="game-screen">
         <div class="hud">
-            <div class="stat-box">HP: <span class="life-bar" id="hp">❤️❤️❤️</span></div>
-            <div class="stat-box">DATA: <span id="score" style="color: var(--neon-blue)">0</span> TB</div>
+            <div class="stat">HP <span id="hp">❤❤❤</span></div>
+            <div class="stat">SCORE <span id="score">0</span></div>
+            <div class="stat">LVL <span id="lvl">1</span></div>
         </div>
-        <div class="grid-floor"></div>
         <div id="robot">🤖</div>
     </div>
 
-    <div id="console">
-        <h2 style="color: var(--neon-blue); margin-top: 0; font-size: 1rem;">> TERMINAL DE COMANDO</h2>
-        
-        <div class="command-list" id="cmd-list"></div>
-
-        <div class="controls-grid">
-            <button class="btn-add" onclick="addNewCommand()">+ ADICIONAR SEQUÊNCIA DE DADOS</button>
-            <button class="btn-run" id="run-btn" onclick="executeSync()">INICIAR SINCRONIZAÇÃO</button>
-            <button class="btn-reset" onclick="location.reload()">ABORTAR</button>
-        </div>
+    <div id="controls">
+        <div id="btn-run" class="joy-btn"><span>⚡</span><span>TURBO</span></div>
+        <div id="btn-jump" class="joy-btn"><span>🚀</span><span>JUMP</span></div>
     </div>
 
 <script>
-    let lives = 3;
-    let score = 0;
-    let isActive = false;
-    let sceneEntities = [];
+    const G = {
+        hp: 3, score: 0, lvl: 1, 
+        running: false, jumping: false, active: false,
+        speed: 6, lastSpawn: 0, entities: [],
+        levels: [
+            { robot: "🤖", good: "💰", bad: "⚠️", theme: "theme-1" },
+            { robot: "🦾", good: "💎", bad: "💣", theme: "theme-2" },
+            { robot: "🛸", good: "🔋", bad: "👾", theme: "theme-3" }
+        ]
+    };
 
-    function addNewCommand() {
-        const list = document.getElementById('cmd-list');
-        const card = document.createElement('div');
-        card.className = 'cmd-card';
-        card.innerHTML = `
-            <span style="color:#666">#0${list.children.length + 1}</span>
-            <select class="type">
-                <option value="run">MOVIMENTAR</option>
-                <option value="jump">IMPULSO (SALTO)</option>
-            </select>
-            <input type="number" class="dur" value="1.5" step="0.5" min="0.5" style="width:70px">
-            <span style="font-size:0.8rem">SEG</span>
-            <button onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--neon-pink); cursor:pointer; margin-left:auto">X</button>
-        `;
-        list.appendChild(card);
+    const screen = document.getElementById('game-screen');
+    const robotEl = document.getElementById('robot');
+    const audio = new (window.AudioContext || window.webkitAudioContext)();
+
+    function beep(f, d, t='sine') {
+        const o = audio.createOscillator(); const g = audio.createGain();
+        o.frequency.value = f; o.type = t;
+        g.gain.exponentialRampToValueAtTime(0.01, audio.currentTime + d);
+        o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + d);
     }
 
-    function generateLevel() {
-        sceneEntities.forEach(e => e.el.remove());
-        sceneEntities = [];
-        const cards = document.querySelectorAll('.cmd-card');
-        let timeTracker = 0;
+    const btnRun = document.getElementById('btn-run');
+    const btnJump = document.getElementById('btn-jump');
 
-        cards.forEach(c => {
-            const duration = parseFloat(c.querySelector('.dur').value);
-            timeTracker += duration;
+    btnRun.addEventListener('touchstart', (e) => { e.preventDefault(); G.running = true; btnRun.classList.add('active'); });
+    btnRun.addEventListener('touchend', () => { G.running = false; btnRun.classList.remove('active'); });
+
+    btnJump.addEventListener('touchstart', (e) => { 
+        e.preventDefault(); 
+        if(!G.jumping) {
+            G.jumping = true;
+            btnJump.classList.add('active');
+            robotEl.style.bottom = '320px'; // Pulo alto
+            beep(400, 0.2);
+        } else {
+            robotEl.style.bottom = '20px'; // Queda rápida
+            beep(150, 0.1, 'sawtooth');
+        }
+    });
+
+    robotEl.addEventListener('transitionend', () => {
+        if(robotEl.style.bottom === '320px') {
+            setTimeout(() => { if(G.jumping) robotEl.style.bottom = '20px'; }, 400);
+        } else {
+            G.jumping = false;
+            btnJump.classList.remove('active');
+        }
+    });
+
+    function startGame() {
+        document.getElementById('modal-start').style.display = 'none';
+        G.active = true;
+        gameLoop();
+    }
+
+    function spawn() {
+        const now = Date.now();
+        const interval = 1000 / (1 + G.lvl * 0.2);
+        if(now - G.lastSpawn > interval) {
+            const h = [30, 130, 230, 320][Math.floor(Math.random() * 4)];
+            const currentCfg = G.levels[Math.min(G.lvl - 1, 2)];
+            const isBad = Math.random() > 0.6;
             
-            const dist = timeTracker * 250; // Velocidade 250px/s
             const el = document.createElement('div');
             el.className = 'entity';
-            el.style.left = (80 + dist) + "px";
-            
-            // Lógica de desafio: Obstáculo vs Item
-            const chance = Math.random();
-            if(chance > 0.4) {
-                el.innerText = '⚡'; // Obstáculo elétrico
-                el.style.color = '#ff0055';
-                el.dataset.type = 'hazard';
-            } else {
-                el.innerText = '💾'; // Item de dados
-                el.style.color = 'var(--neon-blue)';
-                el.dataset.type = 'data';
-            }
-            
-            document.getElementById('viewport').appendChild(el);
-            sceneEntities.push({ el, x: 80 + dist, type: el.dataset.type, processed: false });
-        });
+            el.innerText = isBad ? currentCfg.bad : currentCfg.good;
+            el.style.bottom = h + 'px';
+            el.style.left = window.innerWidth + 'px';
+            screen.appendChild(el);
+            G.entities.push({ el, x: window.innerWidth, type: isBad ? 'bad' : 'good' });
+            G.lastSpawn = now;
+        }
     }
 
-    async function executeSync() {
-        if(isActive) return;
-        generateLevel();
-        isActive = true;
-        document.getElementById('run-btn').disabled = true;
+    function gameLoop() {
+        if(!G.active) return;
+        
+        let curSpeed = G.running ? G.speed * 2.5 : G.speed;
+        spawn();
 
-        const cards = document.querySelectorAll('.cmd-card');
-        const robot = document.getElementById('robot');
-        const startTime = performance.now();
-        const totalDuration = Array.from(cards).reduce((acc, c) => acc + parseFloat(c.querySelector('.dur').value), 0);
+        for(let i = G.entities.length - 1; i >= 0; i--) {
+            let item = G.entities[i];
+            item.x -= curSpeed;
+            item.el.style.left = item.x + 'px';
 
-        function gameLoop(now) {
-            if(!isActive) return;
-            let elapsed = (now - startTime) / 1000;
-            let currentDist = elapsed * 250;
+            const rRect = robotEl.getBoundingClientRect();
+            const iRect = item.el.getBoundingClientRect();
 
-            // Encontrar ação atual baseada no tempo
-            let checkTime = 0;
-            let currentAction = 'run';
-            for(let c of cards) {
-                let d = parseFloat(c.querySelector('.dur').value);
-                if(elapsed >= checkTime && elapsed < checkTime + d) {
-                    currentAction = c.querySelector('.type').value;
-                    break;
-                }
-                checkTime += d;
-            }
-
-            // Altura do Robô
-            robot.style.bottom = (currentAction === 'jump') ? "160px" : "40px";
-
-            // Movimentação e Colisão
-            sceneEntities.forEach(item => {
-                let visualX = item.x - currentDist;
-                item.el.style.left = visualX + "px";
-
-                if(!item.processed && visualX < 130 && visualX > 40) {
-                    item.processed = true;
-                    if(item.type === 'hazard' && currentAction !== 'jump') {
-                        lives--;
-                        flashRed();
-                    } else if(item.type === 'data') {
-                        score += 5;
-                        item.el.style.opacity = '0';
+            // Colisão
+            if(!(iRect.right < rRect.left + 15 || iRect.left > rRect.right - 15 || 
+                 iRect.bottom < rRect.top + 15 || iRect.top > rRect.bottom - 15)) {
+                
+                if(item.type === 'bad') {
+                    G.hp--; beep(80, 0.4, 'sawtooth');
+                } else {
+                    G.score += G.running ? 30 : 10; beep(800, 0.05);
+                    // Lógica de subir nível
+                    if(G.score >= G.lvl * 400 && G.lvl < 3) {
+                        G.lvl++;
+                        G.speed += 1.5;
+                        const cfg = G.levels[G.lvl - 1];
+                        document.body.className = cfg.theme;
+                        robotEl.innerText = cfg.robot;
+                        beep(1000, 0.5);
                     }
-                    updateHUD();
                 }
-            });
-
-            if(elapsed < totalDuration && lives > 0) {
-                requestAnimationFrame(gameLoop);
-            } else {
-                finishMission();
+                item.el.remove();
+                G.entities.splice(i, 1);
+                updateHUD();
+            } else if(item.x < -100) {
+                item.el.remove();
+                G.entities.splice(i, 1);
             }
         }
-        requestAnimationFrame(gameLoop);
-    }
 
-    function flashRed() {
-        document.getElementById('viewport').style.boxShadow = "inset 0 0 50px #ff0000";
-        setTimeout(() => document.getElementById('viewport').style.boxShadow = "none", 300);
+        if(G.hp <= 0) {
+            G.active = false;
+            document.getElementById('final-score').innerText = "SCORE: " + G.score;
+            document.getElementById('modal-over').style.display = 'flex';
+        } else {
+            requestAnimationFrame(gameLoop);
+        }
     }
 
     function updateHUD() {
-        document.getElementById('hp').innerText = '❤️'.repeat(lives);
-        document.getElementById('score').innerText = score;
+        document.getElementById('hp').innerText = '❤'.repeat(Math.max(0, G.hp));
+        document.getElementById('score').innerText = G.score;
+        document.getElementById('lvl').innerText = G.lvl;
     }
-
-    function finishMission() {
-        isActive = false;
-        document.getElementById('run-btn').disabled = false;
-        const modal = document.getElementById('modal');
-        const title = document.getElementById('modal-title');
-        const desc = document.getElementById('modal-desc');
-
-        modal.style.display = 'flex';
-        if(lives <= 0) {
-            title.innerText = "SISTEMA COMPROMETIDO";
-            title.style.color = "var(--neon-pink)";
-            desc.innerText = `O robô atingiu 3 obstáculos e foi desativado. Dados recuperados: ${score} TB.`;
-        } else {
-            title.innerText = "MISSÃO COMPLETA";
-            title.style.color = "var(--neon-blue)";
-            desc.innerText = `Protocolo concluído com sucesso. Dados totais: ${score} TB.`;
-        }
-    }
-
-    addNewCommand(); addNewCommand(); addNewCommand();
 </script>
 </body>
 </html>
